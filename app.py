@@ -9,7 +9,7 @@ st.title("📊 Análise Climática Comparativa")
 st.write("Dados - 2006-2024")
 st.write("Fonte: Instituto Nacional de Meteorologia, INMET - Estação A511")
 st.write("Localização: -19,573889	 -42,622500")
-st.write("Tem algumas inconsistências por falta de dados do ano")
+st.markdown("_Tem algumas inconsistências por falta de dados do ano_")
 
 @st.cache_data
 def load_data():
