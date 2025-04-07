@@ -6,8 +6,10 @@ import numpy as np
 
 st.set_page_config(page_title="Análise Climática", layout="wide")
 st.title("📊 Análise Climática Comparativa")
-st.write("Dados - 2010-2021")
-st.write("Tem algumas inconsistência por falta de dados do ano - especificar na aba 1")
+st.write("Dados - 2006-2024")
+st write("Fonte: Instituto Nacional de Meteorologia, INMET - Estação A511"
+st write("Localização: -19,573889	, -42,622500")
+st.write("Tem algumas inconsistência por falta de dados do ano")
 
 @st.cache_data
 def load_data():
