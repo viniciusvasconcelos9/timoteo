@@ -10,7 +10,7 @@ st.write("Dados - 2006-2024")
 st.write("Fonte: Instituto Nacional de Meteorologia, INMET - Estação A511")
 st.write("Localização: -19,573889	 -42,622500")
 st.markdown("_Tem algumas inconsistências por falta de dados do ano_")
-
+st.markdown("*Feito por Vinícius Vasconcelos*")
 @st.cache_data
 def load_data():
     df = pd.read_csv("data.csv", sep=';', quotechar='"', encoding='utf-8')
