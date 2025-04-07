@@ -6,6 +6,8 @@ import numpy as np
 
 st.set_page_config(page_title="Análise Climática", layout="wide")
 st.title("📊 Análise Climática Comparativa")
+st.write("Dados - 2010-2021")
+st.write("Tem algumas inconsistência por falta de dados do ano - especificar na aba 1")
 
 @st.cache_data
 def load_data():
@@ -29,10 +31,147 @@ def load_data():
 df = load_data()
 anos_disponiveis = sorted(df['Ano'].dropna().unique())
 
-aba = st.tabs(["📈 Comparação entre Anos", "📅 Médias Diárias por Mês (Ano único)", "📅 Médias Diárias por Mês"])
+aba = st.tabs(["📋 Resumo Histórico de Extremos Climáticos", "📅 Resumo de Extremos por Ano", "📈 Comparação entre Anos", "📅 Médias Diárias por Mês (Ano único)", "📅 Médias Diárias por Mês"])
 
 # ------------------------ ABA 1 ------------------------
 with aba[0]:
+    st.subheader("📋 Resumo Histórico de Extremos Climáticos")
+
+    # Garantir que os dados estejam válidos
+    df_valid = df.dropna(subset=['Data', 'Hora (UTC)', 'Temp. Ins. (C)', 'Chuva (mm)', 'Radiacao (KJ/m²)'])
+
+    # Criar coluna de datetime completo
+    df_valid['Datetime'] = pd.to_datetime(df_valid['Data'].astype(str) + ' ' + df_valid['Hora (UTC)'], format='%Y-%m-%d %H:%M')
+    df_valid = df_valid.sort_values('Datetime')  # Garantir ordenação
+    df_valid.set_index('Datetime', inplace=True)
+
+    # Temperatura mínima
+    temp_min_idx = df_valid['Temp. Ins. (C)'].idxmin()
+    temp_min = df_valid.loc[temp_min_idx]
+
+    # Temperatura máxima
+    temp_max_idx = df_valid['Temp. Ins. (C)'].idxmax()
+    temp_max = df_valid.loc[temp_max_idx]
+
+    # Precipitação máxima pontual
+    chuva_max_idx = df_valid['Chuva (mm)'].idxmax()
+    chuva_max = df_valid.loc[chuva_max_idx]
+
+    # Radiação máxima
+    rad_max_idx = df_valid['Radiacao (KJ/m²)'].idxmax()
+    rad_max = df_valid.loc[rad_max_idx]
+
+    # Chuva acumulada em 24h
+    rolling_chuva_24h = df_valid['Chuva (mm)'].rolling('24H').sum()
+    chuva_24h_idx = rolling_chuva_24h.idxmax()
+    chuva_24h_val = rolling_chuva_24h.max()
+    chuva_24h_fim = chuva_24h_idx
+    chuva_24h_ini = chuva_24h_fim - pd.Timedelta(hours=24)
+
+    # Chuva acumulada em 7 dias (168h)
+    rolling_chuva_7d = df_valid['Chuva (mm)'].rolling('168H').sum()
+    chuva_7d_idx = rolling_chuva_7d.idxmax()
+    chuva_7d_val = rolling_chuva_7d.max()
+    chuva_7d_fim = chuva_7d_idx
+    chuva_7d_ini = chuva_7d_fim - pd.Timedelta(days=7)
+
+    # Exibição
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("🌡️ Temperatura Mínima", f"{temp_min['Temp. Ins. (C)']:.2f} °C", help=f"{temp_min['Data'].strftime('%d/%m/%Y')}")
+        st.write("📅 Data/Hora: " + f"{temp_min['Data'].strftime('%d/%m/%Y')} {temp_min['Hora (UTC)']} UTC")
+
+        st.metric("🌧️ Precipitação Máxima", f"{chuva_max['Chuva (mm)']:.2f} mm", help=f"{chuva_max['Data'].strftime('%d/%m/%Y')}")
+        st.write("📅 Data/Hora: " + f"{chuva_max['Data'].strftime('%d/%m/%Y')} {chuva_max['Hora (UTC)']} UTC")
+
+        st.metric("🌧️ Chuva Acumulada (24h)", f"{chuva_24h_val:.2f} mm")
+        st.write("🕒 Período: " + f"{chuva_24h_ini.strftime('%d/%m/%Y %H:%M')} - {chuva_24h_fim.strftime('%d/%m/%Y %H:%M')} UTC")
+
+    with col2:
+        st.metric("🌡️ Temperatura Máxima", f"{temp_max['Temp. Ins. (C)']:.2f} °C", help=f"{temp_max['Data'].strftime('%d/%m/%Y')}")
+        st.write("📅 Data/Hora: " + f"{temp_max['Data'].strftime('%d/%m/%Y')} {temp_max['Hora (UTC)']} UTC")
+
+        st.metric("☀️ Radiação Máxima", f"{rad_max['Radiacao (KJ/m²)']:.2f} KJ/m²", help=f"{rad_max['Data'].strftime('%d/%m/%Y')}")
+        st.write("📅 Data/Hora: " + f"{rad_max['Data'].strftime('%d/%m/%Y')} {rad_max['Hora (UTC)']} UTC")
+
+        st.metric("🌧️ Chuva Acumulada (7 dias)", f"{chuva_7d_val:.2f} mm")
+        st.write("🕒 Período: " + f"{chuva_7d_ini.strftime('%d/%m/%Y %H:%M')} - {chuva_7d_fim.strftime('%d/%m/%Y %H:%M')} UTC")
+
+
+with aba[1]:
+    st.subheader("📅 Resumo de Extremos por Ano")
+
+    # Garantir dados válidos
+    df_valid = df.dropna(subset=['Data', 'Hora (UTC)', 'Temp. Ins. (C)', 'Chuva (mm)', 'Radiacao (KJ/m²)'])
+
+    # Criar coluna de datetime completo
+    df_valid['Datetime'] = pd.to_datetime(df_valid['Data'].astype(str) + ' ' + df_valid['Hora (UTC)'], format='%Y-%m-%d %H:%M')
+    df_valid['Ano'] = df_valid['Datetime'].dt.year
+    df_valid = df_valid.sort_values('Datetime')
+
+    # Seleção de ano
+    anos_disponiveis = sorted(df_valid['Ano'].unique(), reverse=True)
+    ano_selecionado = st.selectbox("Selecione o ano", anos_disponiveis)
+
+    # Filtrar pelo ano selecionado
+    df_ano = df_valid[df_valid['Ano'] == ano_selecionado].copy()
+    df_ano.set_index('Datetime', inplace=True)
+
+    if not df_ano.empty:
+        # Temperatura mínima
+        temp_min_idx = df_ano['Temp. Ins. (C)'].idxmin()
+        temp_min = df_ano.loc[temp_min_idx]
+
+        # Temperatura máxima
+        temp_max_idx = df_ano['Temp. Ins. (C)'].idxmax()
+        temp_max = df_ano.loc[temp_max_idx]
+
+        # Precipitação máxima
+        chuva_max_idx = df_ano['Chuva (mm)'].idxmax()
+        chuva_max = df_ano.loc[chuva_max_idx]
+
+        # Radiação máxima
+        rad_max_idx = df_ano['Radiacao (KJ/m²)'].idxmax()
+        rad_max = df_ano.loc[rad_max_idx]
+
+        # Chuva acumulada em 24h
+        rolling_24h = df_ano['Chuva (mm)'].rolling('24H').sum()
+        chuva_24h_idx = rolling_24h.idxmax()
+        chuva_24h_val = rolling_24h.max()
+        chuva_24h_ini = chuva_24h_idx - pd.Timedelta(hours=24)
+
+        # Chuva acumulada em 7 dias
+        rolling_7d = df_ano['Chuva (mm)'].rolling('168H').sum()
+        chuva_7d_idx = rolling_7d.idxmax()
+        chuva_7d_val = rolling_7d.max()
+        chuva_7d_ini = chuva_7d_idx - pd.Timedelta(days=7)
+
+        # Exibição
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("🌡️ Temperatura Mínima", f"{temp_min['Temp. Ins. (C)']:.2f} °C", help=temp_min.name.strftime('%d/%m/%Y'))
+            st.write("📅 Data/Hora: " + temp_min.name.strftime('%d/%m/%Y %H:%M') + " UTC")
+
+            st.metric("🌧️ Precipitação Máxima", f"{chuva_max['Chuva (mm)']:.2f} mm", help=chuva_max.name.strftime('%d/%m/%Y'))
+            st.write("📅 Data/Hora: " + chuva_max.name.strftime('%d/%m/%Y %H:%M') + " UTC")
+
+            st.metric("🌧️ Chuva Acumulada (24h)", f"{chuva_24h_val:.2f} mm")
+            st.write("🕒 Período: " + f"{chuva_24h_ini.strftime('%d/%m/%Y %H:%M')} - {chuva_24h_idx.strftime('%d/%m/%Y %H:%M')} UTC")
+
+        with col2:
+            st.metric("🌡️ Temperatura Máxima", f"{temp_max['Temp. Ins. (C)']:.2f} °C", help=temp_max.name.strftime('%d/%m/%Y'))
+            st.write("📅 Data/Hora: " + temp_max.name.strftime('%d/%m/%Y %H:%M') + " UTC")
+
+            st.metric("☀️ Radiação Máxima", f"{rad_max['Radiacao (KJ/m²)']:.2f} KJ/m²", help=rad_max.name.strftime('%d/%m/%Y'))
+            st.write("📅 Data/Hora: " + rad_max.name.strftime('%d/%m/%Y %H:%M') + " UTC")
+
+            st.metric("🌧️ Chuva Acumulada (7 dias)", f"{chuva_7d_val:.2f} mm")
+            st.write("🕒 Período: " + f"{chuva_7d_ini.strftime('%d/%m/%Y %H:%M')} - {chuva_7d_idx.strftime('%d/%m/%Y %H:%M')} UTC")
+    else:
+        st.warning("Nenhum dado disponível para o ano selecionado.")
+
+# ------------------------ ABA 1 ------------------------
+with aba[2]:
     st.subheader("📆 Comparação entre Anos")
 
     anos_selecionados = st.multiselect("Selecione os anos para comparar", anos_disponiveis, default=anos_disponiveis[:2])
@@ -83,7 +222,7 @@ with aba[0]:
         st.pyplot(plot_line_chart(df_grouped, 'Chuva', 'mm', 'Precipitação Total por Mês', color_map))
 
 # ------------------------ ABA 1 ------------------------
-with aba[1]:
+with aba[3]:
     st.subheader("📆 Análise de um Ano com Variação Mensal")
 
     ano_selecionado = st.selectbox("Selecione um ano", anos_disponiveis)
@@ -142,7 +281,7 @@ with aba[1]:
 
 # ------------------------ ABA 2 ------------------------
 
-with aba[2]:
+with aba[4]:
     st.subheader("📅 Médias Diárias por Mês")
 
     ano_unico = st.selectbox("Selecione um ano para análise detalhada diária", anos_disponiveis)
@@ -155,10 +294,8 @@ with aba[2]:
         9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
     }
     meses_labels = [meses_nomes[m] for m in meses_disponiveis]
-    meses_selecionados_labels = st.multiselect("Selecione os meses", meses_labels, default=meses_labels)
-
-    # Mapear de volta para número do mês
-    meses_selecionados = [k for k, v in meses_nomes.items() if v in meses_selecionados_labels]
+    mes_label = st.selectbox("Selecione o mês", meses_labels)
+    meses_selecionados = [k for k, v in meses_nomes.items() if v == mes_label]
 
     df_diario = df_ano[df_ano['Mes'].isin(meses_selecionados)].groupby(['Mes', 'Dia']).agg({
         "Temp. Ins. (C)": "mean",
@@ -171,15 +308,14 @@ with aba[2]:
 
     def plot_diario(df, y, ylabel, title, color):
         fig, ax = plt.subplots(figsize=(8, 4))
-        meses = sorted(df['Mês'].unique())
-        for mes in meses:
-            dados_mes = df[df['Mês'] == mes]
-            ax.plot(dados_mes['Dia'], dados_mes[y], label=f"{meses_nomes[mes]}", color=color, alpha=0.3 + 0.7 * mes / 12)
+        mes = df['Mês'].iloc[0]
+        dados_mes = df[df['Mês'] == mes]
+        ax.plot(dados_mes['Dia'], dados_mes[y], label=meses_nomes[mes], color=color)
         ax.set_xlabel("Dia do Mês")
         ax.set_ylabel(ylabel)
-        ax.set_title(title + f" - {ano_unico}")
+        ax.set_title(f"{title} - {meses_nomes[mes]} de {ano_unico}")
         ax.grid(True)
-        ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5), title="Mês")
+        ax.legend()
         plt.tight_layout()
         return fig
 
